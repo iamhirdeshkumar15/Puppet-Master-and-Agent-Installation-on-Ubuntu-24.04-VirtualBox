@@ -1,0 +1,127 @@
+# Step 1: Set Up Puppet Master on Ubuntu 24.04 VM
+
+## 1.1 Set Hostname
+$ sudo hostnamectl set-hostname puppetmaster
+
+## 1.2 Add IP Addresses to /etc/hosts
+$ sudo vim /etc/hosts
+# Example:
+192.168.56.10 puppetmaster
+192.168.56.11 puppetagent
+
+## 1.3 Add Puppet Repository
+$ wget https://apt.puppetlabs.com/puppet6-release-bionic.deb
+# OR
+$ curl -O https://apt.puppetlabs.com/puppet6-release-bionic.deb
+
+$ sudo dpkg -i puppet-release-bionic.deb
+$ sudo apt update
+
+## 1.4 Install Puppet Server
+$ sudo apt-get install puppetserver -y
+
+## 1.5 Configure Puppet Server
+$ sudo vim /etc/puppet/puppet.conf
+# Add under [main] section:
+[master]
+dns_alt_names = puppetmaster, puppet
+
+[main]
+server = puppetmaster
+certname = puppetmaster
+
+## 1.6 Set Java Memory Allocation
+$ sudo vim /etc/default/puppetserver
+# Modify:
+JAVA_ARGS="-Xms512m -Xmx512m"
+
+## 1.7 Start and Enable Puppet Server
+$ sudo systemctl start puppetserver
+$ sudo systemctl enable puppetserver
+$ sudo systemctl status puppetserver
+
+## 1.8 Adjust Firewall
+$ sudo ufw allow 8140
+
+# Step 2: Set Up Puppet Agent (Slave) on Ubuntu 24.04 VM
+
+## 2.1 Set Hostname
+$ sudo hostnamectl set-hostname puppetagent
+
+## 2.2 Add IP Addresses to /etc/hosts
+$ sudo vim /etc/hosts
+# Example:
+192.168.56.10 puppetmaster
+192.168.56.11 puppetagent
+
+## 2.3 Add Puppet Repository
+$ wget https://apt.puppetlabs.com/puppet6-release-bionic.deb
+# OR
+$ curl -O https://apt.puppetlabs.com/puppet6-release-bionic.deb
+
+$ sudo dpkg -i puppet-release-bionic.deb
+$ sudo apt update
+
+## 2.4 Install Puppet Agent
+$ sudo apt-get install puppet-agent
+
+## 2.5 Configure Puppet Agent
+$ sudo vim /etc/puppet/puppet.conf
+# Add under [main] section:
+[main]
+server = puppetmaster
+certname = puppetagent
+
+## 2.6 Start and Enable Puppet Agent
+$ sudo systemctl start puppet
+$ sudo systemctl enable puppet
+
+## 2.7 Request Certificate from Puppet Master
+$ sudo /usr/bin/puppet agent --test
+
+# Step 3: Sign the Certificate on Puppet Master
+
+## 3.1 List Pending Certificate Requests
+$ sudo /usr/bin/puppetserver ca list
+
+## 3.2 Sign the Agent's Certificate
+$ sudo /usr/bin/puppetserver ca sign --certname puppetagent
+
+## 3.3 Test the Connection
+$ sudo /usr/bin/puppet agent --test
+
+# Step 4: Applying Manifests
+
+## 4.1 Puppet Master Directory Structure
+# Manifests are stored in:
+# /etc/puppet/code/environments/production/manifests
+
+## 4.2 Example Manifest (site.pp)
+$ sudo vim /etc/puppet/code/environments/production/manifests/site.pp
+# Add the following content:
+node 'puppetagent.example.com' {
+  file { '/tmp/hello.txt':
+    ensure  => present,
+    content => "Hello from Puppet Master!\n",
+  }
+}
+
+## 4.3 Apply the Configuration
+$ sudo /usr/bin/puppet agent --test
+
+
+
+
+## Restart Server 
+sudo systemctl daemon-reload
+sudo systemctl restart puppetserver
+sudo systemctl enable puppetserver
+sudo systemctl status puppetserver
+
+
+
+## Restart Agent 
+sudo systemctl restart puppet
+sudo systemctl enable puppet
+sudo systemctl status puppet
+
